@@ -19,6 +19,8 @@ class Minimax(object):
     def __init__(self, board):
         # copy the board to self.board
         self.board = [x[:] for x in board]
+        self.board_height = len(board)
+        self.board_width = len(board[0])
             
     def bestMove(self, depth, state, curr_player):
         """ Returns the best move (as a column number) and the associated alpha
@@ -33,7 +35,7 @@ class Minimax(object):
         
         # enumerate all legal moves
         legal_moves = {} # will map legal move states to their alpha values
-        for col in range(7):
+        for col in range(self.board_width):
             # if column i is a legal move...
             if self.isLegalMove(col, state):
                 # make the move in column 'col' for curr_player
@@ -61,7 +63,7 @@ class Minimax(object):
         
         # enumerate all legal moves from this state
         legal_moves = []
-        for i in range(7):
+        for i in range(self.board_width):
             # if column i is a legal move...
             if self.isLegalMove(i, state):
                 # make the move in column i for curr_player
@@ -90,7 +92,7 @@ class Minimax(object):
         """ Boolean function to check if a move (column) is a legal move
         """
         
-        for i in range(6):
+        for i in range(self.board_height):
             if state[i][column] == ' ':
                 # once we find the first empty, we know it's a legal move
                 return True
@@ -115,7 +117,7 @@ class Minimax(object):
         """
         
         temp = [x[:] for x in state]
-        for i in range(6):
+        for i in range(self.board_height):
             if temp[i][column] == ' ':
                 temp[i][column] = color
                 return temp
@@ -145,8 +147,8 @@ class Minimax(object):
     def checkForStreak(self, state, color, streak):
         count = 0
         # for each piece in the board...
-        for i in range(6):
-            for j in range(7):
+        for i in range(self.board_height):
+            for j in range(self.board_width):
                 # ...that is of the color we're looking for...
                 if state[i][j].lower() == color.lower():
                     # check if a vertical streak starts at (i, j)
@@ -162,7 +164,7 @@ class Minimax(object):
             
     def verticalStreak(self, row, col, state, streak):
         consecutiveCount = 0
-        for i in range(row, 6):
+        for i in range(row, self.board_height):
             if state[i][col].lower() == state[row][col].lower():
                 consecutiveCount += 1
             else:
@@ -175,7 +177,7 @@ class Minimax(object):
     
     def horizontalStreak(self, row, col, state, streak):
         consecutiveCount = 0
-        for j in range(col, 7):
+        for j in range(col, self.board_width):
             if state[row][j].lower() == state[row][col].lower():
                 consecutiveCount += 1
             else:
@@ -192,8 +194,8 @@ class Minimax(object):
         # check for diagonals with positive slope
         consecutiveCount = 0
         j = col
-        for i in range(row, 6):
-            if j > 6:
+        for i in range(row, self.board_height):
+            if j >= self.board_height:
                 break
             elif state[i][j].lower() == state[row][col].lower():
                 consecutiveCount += 1
@@ -208,7 +210,7 @@ class Minimax(object):
         consecutiveCount = 0
         j = col
         for i in range(row, -1, -1):
-            if j > 6:
+            if j >= self.board_height:
                 break
             elif state[i][j].lower() == state[row][col].lower():
                 consecutiveCount += 1
