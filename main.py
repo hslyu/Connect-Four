@@ -13,8 +13,9 @@ def main():
     """ Play a game!
     """
     
-    g = Game()
-    g.printState()
+    g = Game(verbose=False)
+#    g = Game(verbose=True)
+#    g.printState()
     player1 = g.players[0]
     player2 = g.players[1]
     
@@ -44,7 +45,7 @@ def main():
             
             if play_again.lower() == 'y' or play_again.lower() == 'yes': 
                 g.newGame()
-                g.printState()
+#                g.printState()
                 break
             elif play_again.lower() == 'n' or play_again.lower() == 'no':
                 print("Thanks for playing!")
