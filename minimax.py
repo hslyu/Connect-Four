@@ -8,86 +8,59 @@
 # February 27, 2012
 
 import random
+import cfg
+
+STREAK = cfg.STREAK
 
 class Minimax(object):
     """ Minimax object that takes a current connect four board state
     """
     
-    board = None
-    colors = ["x", "o"]
-    
-    def __init__(self, board):
+    def __init__(self, board, color, num_streak=STREAK):
         # copy the board to self.board
-        self.board = [x[:] for x in board]
+        #self.board = [x[:] for x in board]
+        self.board = board
+
         self.board_height = len(board)
         self.board_width = len(board[0])
+        self.color = color
+        self.opp_color = 'x' if color == 'o' else 'o'
+        self.num_streak = num_streak
             
-    def bestMove(self, depth, state, curr_player):
-        """ Returns the best move (as a column number) and the associated alpha
-            Calls search()
+    def bestMove(self, depth, state, color):
+        """ 
+            In current board "state", player in "color" foresees "depth" step further
+            and gets the best action
         """
-        
-        # determine opponent's color
-        if curr_player == self.colors[0]:
-            opp_player = self.colors[1]
-        else:
-            opp_player = self.colors[0]
-        
+
+        # Opponent
+        opp_color = 'x' if color == 'o' else 'o'
+
         # enumerate all legal moves
-        legal_moves = {} # will map legal move states to their alpha values
+        legal_moves = [] # will map legal move states to their alpha values
         for col in range(self.board_width):
             # if column i is a legal move...
             if self.isLegalMove(col, state):
-                # make the move in column 'col' for curr_player
-                temp = self.makeMove(state, col, curr_player)
-                legal_moves[col] = -self.search(depth-1, temp, opp_player)
-        
-        best_alpha = -99999999
-        best_move = None
-        moves = legal_moves.items()
-        random.shuffle(list(moves))
-        for move, alpha in moves:
-            if alpha >= best_alpha:
-                best_alpha = alpha
-                best_move = move
-        
-        return best_move, best_alpha
-        
-    def search(self, depth, state, curr_player):
-        """ Searches the tree at depth 'depth'
-            By default, the state is the board, and curr_player is whomever 
-            called this search
-            
-            Returns the alpha value
-        """
-        
-        # enumerate all legal moves from this state
-        legal_moves = []
-        for i in range(self.board_width):
-            # if column i is a legal move...
-            if self.isLegalMove(i, state):
-                # make the move in column i for curr_player
-                temp = self.makeMove(state, i, curr_player)
-                legal_moves.append(temp)
+                legal_moves.append(col)
         
         # if this node (state) is a terminal node or depth == 0...
-        if depth == 0 or len(legal_moves) == 0 or self.gameIsOver(state):
+        if depth == 0 or len(legal_moves) == 0:
             # return the heuristic value of node
-            return self.value(state, curr_player)
+            return None, self.value(state, color)
+      
+        move_value = {}
+        for move in legal_moves:
+            next_board = self.makeMove(state, move, color)
+            _, v = self.bestMove(depth-1, next_board, opp_color)
+            move_value[move] = v
+
+        max_or_min = max if self.color==color else min # determine whether this player is maximizer or minimizer
+        best_value = max_or_min(move_value.values())
+        tie = [move for move in legal_moves if move_value[move] == best_value]
+        best_move = random.choice(tie)
         
-        # determine opponent's color
-        if curr_player == self.colors[0]:
-            opp_player = self.colors[1]
-        else:
-            opp_player = self.colors[0]
-
-        alpha = -99999999
-        for child in legal_moves:
-            if child == None:
-                print("child == None (search)")
-            alpha = max(alpha, -self.search(depth-1, child, opp_player))
-        return alpha
-
+        return best_move, best_value
+        
     def isLegalMove(self, column, state):
         """ Boolean function to check if a move (column) is a legal move
         """
@@ -99,15 +72,6 @@ class Minimax(object):
         
         # if we get here, the column is full
         return False
-    
-    def gameIsOver(self, state):
-        if self.checkForStreak(state, self.colors[0], 4) >= 1:
-            return True
-        elif self.checkForStreak(state, self.colors[1], 4) >= 1:
-            return True
-        else:
-            return False
-        
     
     def makeMove(self, state, column, color):
         """ Change a state object to reflect a player, denoted by color,
@@ -128,21 +92,33 @@ class Minimax(object):
             (num of 2-in-a-rows)*10 - (num of opponent 4-in-a-rows)*99999 - (num of opponent
             3-in-a-rows)*100 - (num of opponent 2-in-a-rows)*10
         """
-        if color == self.colors[0]:
-            o_color = self.colors[1]
-        else:
-            o_color = self.colors[0]
+
+
+        opp_color = "x" if color == "o" else "o"
         
-        my_fours = self.checkForStreak(state, color, 4)
-        my_threes = self.checkForStreak(state, color, 3)
-        my_twos = self.checkForStreak(state, color, 2)
-        opp_fours = self.checkForStreak(state, o_color, 4)
-        #opp_threes = self.checkForStreak(state, o_color, 3)
-        #opp_twos = self.checkForStreak(state, o_color, 2)
-        if opp_fours > 0:
-            return -100000
-        else:
-            return my_fours*100000 + my_threes*100 + my_twos
+        n_streaks  = [self.checkForStreak(state, color, streak) for streak in range(2,self.num_streak+1)]
+        value = 0
+        for i, v in enumerate(n_streaks[:-1]):
+            value += v*100**i
+        # termination condition
+        value += n_streaks[-1]*1e20
+
+        opp_n_streaks  = [self.checkForStreak(state, opp_color, streak) for streak in range(2,self.num_streak+1)]
+        for i, v in enumerate(opp_n_streaks[:-1]):
+            value -= v*100**i
+
+        if opp_n_streaks[-1] != 0:
+            value = -1e10
+
+#        import time
+#        print([i for i in range(2,self.num_streak+1)])
+#        print(n_streaks)
+#        print(opp_n_streaks, value)
+#        time.sleep(.3)
+#        for row in state:
+#            print(row)
+
+        return value
             
     def checkForStreak(self, state, color, streak):
         count = 0
@@ -193,30 +169,31 @@ class Minimax(object):
         total = 0
         # check for diagonals with positive slope
         consecutiveCount = 0
-        j = col
-        for i in range(row, self.board_height):
-            if j >= self.board_height:
+        
+        i=0
+        while True:
+            if row+i >= self.board_height or col+i >= self.board_width:
                 break
-            elif state[i][j].lower() == state[row][col].lower():
+            elif state[row+i][col+i].lower() == state[row][col].lower():
                 consecutiveCount += 1
             else:
                 break
-            j += 1 # increment column when row is incremented
+            i+=1
             
         if consecutiveCount >= streak:
             total += 1
 
         # check for diagonals with negative slope
         consecutiveCount = 0
-        j = col
-        for i in range(row, -1, -1):
-            if j >= self.board_height:
+        i=0
+        while True:
+            if row-i < 0 or col+i >= self.board_width:
                 break
-            elif state[i][j].lower() == state[row][col].lower():
+            elif state[row-i][col+i].lower() == state[row][col].lower():
                 consecutiveCount += 1
             else:
                 break
-            j += 1 # increment column when row is incremented
+            i += 1 # increment column when row is incremented
 
         if consecutiveCount >= streak:
             total += 1

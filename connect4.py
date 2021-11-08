@@ -4,7 +4,7 @@
 # Erik Ackermann
 # Charlene Wang
 #
-# Connect 4 Module
+# Connect n Module
 # February 27, 2012
 
 import random
@@ -16,9 +16,10 @@ import logging
 
 WIDTH = cfg.WIDTH
 HEIGHT = cfg.HEIGHT
+STREAK = cfg.STREAK
 
 class Game(object):
-    """ Game object that holds state of Connect 4 board and game values
+    """ Game object that holds state of Connect n board and game values
     """
     
     board = None
@@ -30,13 +31,14 @@ class Game(object):
     game_name = u"Connecter Quatre\u2122" # U+2122 is "tm" this is a joke
     colors = ["x", "o"]
     
-    def __init__(self, width = WIDTH, height = HEIGHT, verbose=True):
+    def __init__(self, width = WIDTH, height = HEIGHT, streak = STREAK, verbose=True):
         self.round = 1
         self.finished = False
         self.winner = None
         self.width = width
         self.height = height
         self.verbose = verbose
+        self.streak = streak
         
         # logging
         logging.basicConfig(format='%(message)s', level=logging.DEBUG if verbose else logging.INFO) 
@@ -47,16 +49,17 @@ class Game(object):
         self.formatter = logging.Formatter('%(message)s')
         self.handler.setFormatter(self.formatter)
         
-        diff = 4
+        diff = 1
         # do cross-platform clear screen
         os.system( [ 'clear', 'cls' ][ os.name == 'nt' ] )
-        self.players[0] = MiniMaxPlayer("Player 1", self.colors[0], 4)
+        self.players[0] = QPlayer("Player 1", self.colors[0])
+#        self.players[0] = HumanPlayer("Player 1", self.colors[0])
         self.logger.debug("{0} will be {1}".format(self.players[0].name, self.colors[0]))
         
         self.players[1] = MiniMaxPlayer("Player 2", self.colors[1], diff+1)
         self.logger.debug("{0} will be {1}".format(self.players[1].name, self.colors[1]))
         
-    # x always goes first (arbitrary choice on my part)
+        # x always goes first (arbitrary choice on my part)
         self.turn = self.players[0]
         
         self.board = []
@@ -108,7 +111,7 @@ class Game(object):
             if self.board[i][move] == ' ':
                 self.board[i][move] = player.color
                 self.switchTurn()
-                self.checkForFours()
+                self.findStreak()
                 if self.verbose:
                     self.printState()
                 return
@@ -116,7 +119,7 @@ class Game(object):
         self.logger.debug("Invalid move (column is full)")
         return
     
-    def checkForFours(self):
+    def checkForStreak(self):
         # for each piece in the board...
         for i in range(self.height):
             for j in range(self.width):
@@ -139,7 +142,7 @@ class Game(object):
                         self.finished = True
                         return
         
-    def verticalCheck(self, row, col):
+    def verticalCheck(self, row, col):#{{{
         #print("checking vert")
         fourInARow = False
         consecutiveCount = 0
@@ -150,7 +153,7 @@ class Game(object):
             else:
                 break
     
-        if consecutiveCount >= 4:
+        if consecutiveCount >= self.streak:
             fourInARow = True
             if self.players[0].color.lower() == self.board[row][col].lower():
                 self.winner = self.players[0]
@@ -169,7 +172,7 @@ class Game(object):
             else:
                 break
 
-        if consecutiveCount >= 4:
+        if consecutiveCount >= self.streak:
             fourInARow = True
             if self.players[0].color.lower() == self.board[row][col].lower():
                 self.winner = self.players[0]
@@ -187,7 +190,7 @@ class Game(object):
         consecutiveCount = 0
         j = col
         for i in range(row, self.height):
-            if j >= self.height:
+            if j >= self.width:
                 break
             elif self.board[i][j].lower() == self.board[row][col].lower():
                 consecutiveCount += 1
@@ -195,7 +198,7 @@ class Game(object):
                 break
             j += 1 # increment column when row is incremented
             
-        if consecutiveCount >= 4:
+        if consecutiveCount >= self.streak:
             count += 1
             slope = 'positive'
             if self.players[0].color.lower() == self.board[row][col].lower():
@@ -207,7 +210,7 @@ class Game(object):
         consecutiveCount = 0
         j = col
         for i in range(row, -1, -1):
-            if j >= self.height:
+            if j >= self.width:
                 break
             elif self.board[i][j].lower() == self.board[row][col].lower():
                 consecutiveCount += 1
@@ -215,7 +218,7 @@ class Game(object):
                 break
             j += 1 # increment column when row is decremented
 
-        if consecutiveCount >= 4:
+        if consecutiveCount >= self.streak:
             count += 1
             slope = 'negative'
             if self.players[0].color.lower() == self.board[row][col].lower():
@@ -227,11 +230,11 @@ class Game(object):
             fourInARow = True
         if count == 2:
             slope = 'both'
-        return fourInARow, slope
+        return fourInARow, slope#}}}
     
-    def findFours(self):
+    def findStreak(self):
         """ Finds start i,j of four-in-a-row
-            Calls highlightFours
+            Calls highlightStreak
         """
     
         for i in range(self.height):
@@ -239,38 +242,45 @@ class Game(object):
                 if self.board[i][j] != ' ':
                     # check if a vertical four-in-a-row starts at (i, j)
                     if self.verticalCheck(i, j):
-                        self.highlightFour(i, j, 'vertical')
+                        self.highlightStreak(i, j, 'vertical')
+                        self.finished = True
+                        return
                     
                     # check if a horizontal four-in-a-row starts at (i, j)
                     if self.horizontalCheck(i, j):
-                        self.highlightFour(i, j, 'horizontal')
+                        self.highlightStreak(i, j, 'horizontal')
+                        self.finished = True
+                        return
                     
                     # check if a diagonal (either way) four-in-a-row starts at (i, j)
                     # also, get the slope of the four if there is one
                     diag_fours, slope = self.diagonalCheck(i, j)
                     if diag_fours:
-                        self.highlightFour(i, j, 'diagonal', slope)
+                        self.highlightStreak(i, j, 'diagonal', slope)
+                        self.logger.debug(slope)
+                        self.finished = True
+                        return
     
-    def highlightFour(self, row, col, direction, slope=None):
+    def highlightStreak(self, row, col, direction, slope=None):
         """ This function enunciates four-in-a-rows by capitalizing
             the character for those pieces on the board
         """
         
         if direction == 'vertical':
-            for i in range(4):
+            for i in range(self.streak):
                 self.board[row+i][col] = self.board[row+i][col].upper()
         
         elif direction == 'horizontal':
-            for i in range(4):
+            for i in range(self.streak):
                 self.board[row][col+i] = self.board[row][col+i].upper()
         
         elif direction == 'diagonal':
             if slope == 'positive' or slope == 'both':
-                for i in range(4):
+                for i in range(self.streak):
                     self.board[row+i][col+i] = self.board[row+i][col+i].upper()
         
             elif slope == 'negative' or slope == 'both':
-                for i in range(4):
+                for i in range(self.streak):
                     self.board[row-i][col+i] = self.board[row-i][col+i].upper()
         
         else:
@@ -278,9 +288,9 @@ class Game(object):
     
     def printState(self):
         # cross-platform clear screen
-        os.system( [ 'clear', 'cls' ][ os.name == 'nt' ] )
-        self.logger.debug(u"{0}!".format(self.game_name))
-        self.logger.debug("Round: " + str(self.round))
+#        os.system( [ 'clear', 'cls' ][ os.name == 'nt' ] )
+#        self.logger.debug(u"{0}!".format(self.game_name))
+#        self.logger.debug("Round: " + str(self.round))
 
         for i in range(self.height-1, -1, -1):
             print("\t", end="")
