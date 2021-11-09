@@ -2,6 +2,9 @@ import cfg
 from minimax import Minimax
 import numpy as np
 import copy
+import pickle
+from memory import ReplayBuffer
+from board import *
 
 WIDTH = cfg.WIDTH
 HEIGHT = cfg.HEIGHT
@@ -55,229 +58,169 @@ class QPlayer(Player):
     Q = None # Q function dictionary. Q = {}, 
              # Q[board] = np.array with size self.available_actions(board)
     def __init__(self, name, color, discount_factor = 0.99,
-                 board_height = HEIGHT, board_width = WIDTH, epsilon = 0.1):
+                 streak = STREAK, height = HEIGHT, width = WIDTH, 
+                 epsilon = 0.1, epsilon_min = 0.01, epsilon_decay=0.995, batch_size=1e3):
         self.type = "QPlayer"
         self.name = name
         self.color = color
-        self.board_width = WIDTH
-        self.board_height = HEIGHT
+        self.opp_color = 'x' if color == 'o' else 'o'
+        self.streak = streak
+        self.width = width
+        self.height = height
+        self.epsilon_min = epsilon_min
+        self.epsilon_decay = epsilon_decay
         self.epsilon = epsilon
         self.Q = {}
         self.count = {}
         self.discount_factor = discount_factor
 
+        self.buffer = ReplayBuffer(1e5, 1)
+        self.batch_size = batch_size
+        self.transition_counter = 0
+
+        self.sum_reward = 0
+
+    def reset(self):
+        self.sum_reward = 0
+
     def __str__(self):
         return "Q learning player"
 
+    def save(self):
+        with open('data/Q.pkl', 'wb') as f:
+            pickle.dump(self.Q, f)
+        with open('data/epsilon.pkl', 'wb') as f:
+            pickle.dump(self.epsilon, f)
+
+    def load(self):
+        with open('data/Q.pkl', 'rb') as f:
+            self.Q = pickle.load(f)
+        with open('data/epsilon.pkl', 'rb') as f:
+            self.epsilon = pickle.load(f)
+
     def move(self, board):
-        
         action = self._move(board)
         reward = self.calc_reward(board, action)
-        print(f'{reward}')
-        next_board = self.calc_next_board(board, action)
-        
+        self.sum_reward += reward
+        done, result = self.calc_done(board, action)
+        next_board = calc_next_board(board, action, self.color)
         # board is list, so it is unhashable
         # tuple is hashable
-        state = self._get_board_key(board)
-        next_state = self._get_board_key(next_board)
+        state = self._get_key_from_board(board)
+        next_state = self._get_key_from_board(next_board)
 
-        if state not in self.Q.keys():
-            self.Q[state] = {}
-            for a in self.available_actions(board):
-                self.Q[state][a] = 0
-        if state not in self.count.keys():
-            self.count[state] = 0            
-        if next_state not in self.Q.keys():
-            self.Q[state] = {}
-            for a in self.available_actions(next_board):
-                self.Q[state][a] = 0
-
-        next_state, state, 
-        if next_state in self.Q.keys():
-            try:
-                self.count[state] += 1
-                # next_board가 key에 있으면, _move에서 action이 계산된 적 있다
-                best_next_action = np.argmax(self.Q[next_state])
-                delta = self.calc_reward(board, action) + \
-                            self.discount_factor*self.Q[next_state][best_next_action] - self.Q[state][action]
-                self.Q[state][action] += delta/self.count[state]
-            except KeyError:
-                print(f'{action = }')
-                print(f'{best_next_action = }')
-                print(f'{self.Q[state] = }')
-                print(f'{self.Q[next_state] = }')
-                
-        else:
-            self.count[state] = 1
-            actions = self.available_actions(next_board)
-            self.Q[next_state] = {}
-            for column in actions:
-                self.Q[next_state][column] = 0
-            self.Q[state][action] += self.calc_reward(board, action)/self.count[state]
-
+        #Todo: define transition
+        #Todo: seperate update and move
+        self.buffer.push(state,action,next_state,reward,done)
+        self.transition_counter += 1
         return action
 
-    def calc_next_board(self, board, action):
-        """
-        returns next state if given board and action(chosen column)
-        """
-        next_board = copy.deepcopy(board)
-        for i in range(self.board_height):
-            if board[i][action] == ' ':
-                next_board[i][action] = self.color
-                break
-        return next_board
-    
     def calc_reward(self, board, action):
+        done, result = self.calc_done(board, action)
+        if done and result == 'winner':
+            return 1e10
+        elif done and result == 'loser':
+            return -1e10
+        elif done and result =='tie':
+            return -1e3
+
+        m = Minimax(self.opp_color)
+        next_board = calc_next_board(board, action, self.color)
+        opp_best_move, opp_value = m.best_move(2, next_board, self.opp_color)
+
+        reward = -opp_value
+        return reward
+    
+    def calc_done(self, board, action):
         """
-        Calculate difference of the good positions between board and next board
+        Return:
+            done, isWinner (bool, {bool, None}): whether this game is finished,
+                                                 whether the Q player wins, loses, and ties.
+        """
+        next_board = calc_next_board(board, action, self.color)
+        if check_streak(next_board, self.color, self.streak) > 0:
+            return True, "win"
+        elif check_streak(next_board, self.opp_color, self.streak) > 0:
+            return True, "lose"
+        elif not np.any(np.array(board[-1]) == ' '):
+            return True, "tie"
+
+        return False, "ongoing"
+
+    def is_updatable(self):
+        return self.transition_counter >= self.batch_size
         
-        Params:
-            board (list) : connect4 board, board[0] = highest row
-            action (int) : chosen column
-        """
-        def _calc_reward(board):
-            reward = 0
-            for row in range(self.board_height):
-                for col in range(self.board_width):
-                    if board[row][col] != self.color:
-                        continue
-                    reward += check_up(board, row, col)
-                    reward += check_right(board, row, col)
-                    reward += check_vertical_up(board, row, col)
-                    reward += check_vertical_down(board, row, col)
-            return reward
-                    
+    def update(self):
+        batch = self.buffer.sample_batch(self.batch_size)
+        for sample in batch:
+            state = sample.state
+            action = sample.action
+            next_state = sample.next_state
+            reward = sample.reward 
+            done = sample.done
+            board = self._get_board_from_key(state)
+            next_board = self._get_board_from_key(next_state)
 
-        # →, ↑, ↗, ↘ 만 체크해도 보드 전체를 스캔하기 때문에 각각의 반대방향을 고려하게됨{{{
-        def check_up(board, row, col):
-            counter = 0
-            i = 0
-            while True:
-                # row - i eqauls to "goes up i rows"
-                # 0 : highest row index 
-                if board[row-i][col] == self.color:
-                    counter += 1
-                elif board[row-i][col] == ' ':
-                    continue
-                else:
-                    return 0
+            if state not in self.Q.keys():
+                self.Q[state] = {}
+                for a in available_moves(board):
+                    self.Q[state][a] = 0
 
-                # break if row-i is highest row (0)
-                if row - i <= 0:
-                    break
-                i += 1
-            if counter >= STREAK:
-                return 1e8
-            return counter*2
+            if state not in self.count.keys():
+                self.count[state] = 0            
 
-        def check_right(board, row, col):
-            counter = 0
-            i = 0
-            while True:
-                if board[row][col+i] == self.color:
-                    counter += 1
-                elif board[row][col+i] == ' ':
-                    continue
-                else:
-                    return 0
-                
-                # break if col+i is last column
-                if col + i <= self.board_width-1:
-                    break
-                i += 1
+            if next_state not in self.Q.keys():
+                self.Q[next_state] = {}
+                for a in available_moves(next_board):
+                    self.Q[next_state][a] = 0
 
-            if counter >= STREAK:
-                return 1e8
-            return counter*2
+            self.count[state] += 1
+            max_next_q = -1e20
+            for action in self.Q[next_state].keys():
+                if self.Q[state][action] > max_next_q:
+                    max_next_q = self.Q[state][action] 
+            try:
+                delta = reward + self.discount_factor*max_next_q - self.Q[state][action]
+            except KeyError:
+                print(f'{available_moves(board) = }')
+                print(f'{available_moves(next_board) = }')
+                print(f'{best_next_action= }, {action =}')
+                exit()
+            self.Q[state][action] += delta/self.count[state]
+#            print(f'{self.Q[state][action] =}')
 
-        def check_vertical_down(board, row, col):
-            counter = 0
-            i = 0
-            while True:
-                if board[row+i][col+i] == self.color:
-                    counter += 1
-                elif board[row+i][col+i] == ' ':
-                    continue
-                else:
-                    return 0
+        if self.epsilon >= self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+            self.transition_counter = 0
 
-                if col + i <= self.board_width-1 or row + i <=self.board_height-1:
-                    break
-                i+=1
-            if counter >= STREAK:
-                return 1e8
-            return counter*2
-
-        def check_vertical_up(board, row, col):
-            counter = 0
-            i = 0
-            while True:
-                if board[row-i][col+i] == self.color:
-                    counter += 1
-                elif board[row-i][col+i] == ' ':
-                    continue
-                else:
-                    return 0
-
-                if col + i <= self.board_width-1 or row - i <=self.board_height-1:
-                    break
-                i+=1
-            if counter >= STREAK:
-                return 1e8
-            return counter*2#}}}
-                    
-        next_board = self.calc_next_board(board, action)
-        return _calc_reward(next_board) - _calc_reward(board)
-    
-    def _get_board_key(self, board):
+    def _get_key_from_board(self, board):
         return np.array(board).tobytes()
-    
+
+    def _get_board_from_key(self, key):
+        np_array = np.frombuffer(key, dtype='<U1')
+        np_array = np_array.reshape((self.height, self.width))
+        return np_array.tolist()
     
     def _move(self, board):
         # report : number of actions varies with the state
 
         # If some columns are full, we cannot put at full column
-        actions = self.available_actions(board)
-        print(f'available {actions=}')
+        actions = available_moves(board)
 
-        state = self._get_board_key(board)
+        state = self._get_key_from_board(board)
         # if there's no updated Q values, register key "board" in Q
-        print(f'{state not in self.Q.keys() = }')
         if state not in self.Q.keys() or np.random.random() < self.epsilon:
-            print('Epsilon policy')
-            print('Epsilon policy')
-            print('Epsilon policy')
             chosen_action_index = np.random.choice(actions)
-            print(f'{actions =}')
-            print(f'{chosen_action_index = }')
         else:
-            print('Greedy policy')
-            print('Greedy policy')
-            print('Greedy policy')
             Q_max = -1e20
             for action in self.Q[state].keys():
                 if self.Q[state][action] > Q_max:
                     Q_max = self.Q[state][action] 
                     best_index = action
-            print(f'{best_index}')
             tie = [k for k in self.Q[state].keys() if self.Q[state][k] == self.Q[state][best_index]]
-            print(f'{tie=}')
             chosen_action_index = np.random.choice(tie)
-            print(f'{chosen_action_index = }')
 
         return chosen_action_index
-
-
-    def available_actions(self, board):
-        '''
-        board[0] is highest row
-        params
-            board : 2D array representing connect4 board
-        return
-            (numpy array) : index of columns that are not full.
-        '''
-        return np.argwhere(np.array(board[-1]) == ' ').ravel()
 
 class MiniMaxPlayer(Player):
     """ MiniMaxPlayer object that extends Player
@@ -299,9 +242,9 @@ class MiniMaxPlayer(Player):
         #time.sleep(random.randrange(8, 17, 1)/10.0)
         #return random.randint(0, 6)
         
-        m = Minimax(board, self.color)
-        best_move, value = m.bestMove(self.difficulty, board, self.color)
-        return best_move
+        m = Minimax(self.color)
+        opt_move, _ = m.best_move(self.difficulty, board, self.color)
+        return opt_move
 
 def main():
     player = QPlayer('','o', epsilon=1)
@@ -310,14 +253,15 @@ def main():
         board.append([])
         for j in range(WIDTH):
             board[i].append(' ')
-    print(player._move(board))
+    print(f'{player._move(board)}')
     while True:
         action = player.move(board)
         print(f'{action=}')
-        board = player.calc_next_board(board, action)
+        board = calc_next_board(board, action, player.color)
         print_board(board)
         a = input("enter anything to proceed")
         
 
 if __name__ == "__main__":
     main()
+    

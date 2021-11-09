@@ -13,6 +13,7 @@ from player import *
 import cfg
 import numpy as np
 import logging
+from board import *
 
 WIDTH = cfg.WIDTH
 HEIGHT = cfg.HEIGHT
@@ -51,8 +52,8 @@ class Game(object):
         
         diff = 1
         # do cross-platform clear screen
-        os.system( [ 'clear', 'cls' ][ os.name == 'nt' ] )
-        self.players[0] = QPlayer("Player 1", self.colors[0])
+#        os.system( [ 'clear', 'cls' ][ os.name == 'nt' ] )
+        self.players[0] = QPlayer("Player 1", self.colors[0], batch_size=1e3)
 #        self.players[0] = HumanPlayer("Player 1", self.colors[0])
         self.logger.debug("{0} will be {1}".format(self.players[0].name, self.colors[0]))
         
@@ -68,7 +69,7 @@ class Game(object):
             for j in range(self.width):
                 self.board[i].append(' ')
     
-    def newGame(self):
+    def new_game(self):
         """ Function to reset the game, but not the names or colors
         """
         self.round = 1
@@ -84,7 +85,7 @@ class Game(object):
             for j in range(self.width):
                 self.board[i].append(' ')
 
-    def switchTurn(self):
+    def switch_turn(self):
         if self.turn == self.players[0]:
             self.turn = self.players[1]
         else:
@@ -93,7 +94,7 @@ class Game(object):
         # increment the round
         self.round += 1
 
-    def nextMove(self):
+    def next_move(self):
         player = self.turn
 
         # there are only 42 legal places for pieces on the board
@@ -110,158 +111,52 @@ class Game(object):
         for i in range(self.height):
             if self.board[i][move] == ' ':
                 self.board[i][move] = player.color
-                self.switchTurn()
-                self.findStreak()
+                self.switch_turn()
+                self.find_streak()
                 if self.verbose:
-                    self.printState()
+                    self.print_state()
                 return
         # if we get here, then the column is full
         self.logger.debug("Invalid move (column is full)")
         return
     
-    def checkForStreak(self):
-        # for each piece in the board...
-        for i in range(self.height):
-            for j in range(self.width):
-                if self.board[i][j] != ' ':
-                    # check if a vertical four-in-a-row starts at (i, j)
-                    if self.verticalCheck(i, j):
-                        self.finished = True
-                        return
-                    
-                    # check if a horizontal four-in-a-row starts at (i, j)
-                    if self.horizontalCheck(i, j):
-                        self.finished = True
-                        return
-                    
-                    # check if a diagonal (either way) four-in-a-row starts at (i, j)
-                    # also, get the slope of the four if there is one
-                    diag_fours, slope = self.diagonalCheck(i, j)
-                    if diag_fours:
-                        self.logger.debug(slope)
-                        self.finished = True
-                        return
-        
-    def verticalCheck(self, row, col):#{{{
-        #print("checking vert")
-        fourInARow = False
-        consecutiveCount = 0
-    
-        for i in range(row, self.height):
-            if self.board[i][col].lower() == self.board[row][col].lower():
-                consecutiveCount += 1
-            else:
-                break
-    
-        if consecutiveCount >= self.streak:
-            fourInARow = True
-            if self.players[0].color.lower() == self.board[row][col].lower():
-                self.winner = self.players[0]
-            else:
-                self.winner = self.players[1]
-    
-        return fourInARow
-    
-    def horizontalCheck(self, row, col):
-        fourInARow = False
-        consecutiveCount = 0
-        
-        for j in range(col, self.width):
-            if self.board[row][j].lower() == self.board[row][col].lower():
-                consecutiveCount += 1
-            else:
-                break
-
-        if consecutiveCount >= self.streak:
-            fourInARow = True
-            if self.players[0].color.lower() == self.board[row][col].lower():
-                self.winner = self.players[0]
-            else:
-                self.winner = self.players[1]
-
-        return fourInARow
-    
-    def diagonalCheck(self, row, col):
-        fourInARow = False
-        count = 0
-        slope = None
-
-        # check for diagonals with positive slope
-        consecutiveCount = 0
-        j = col
-        for i in range(row, self.height):
-            if j >= self.width:
-                break
-            elif self.board[i][j].lower() == self.board[row][col].lower():
-                consecutiveCount += 1
-            else:
-                break
-            j += 1 # increment column when row is incremented
-            
-        if consecutiveCount >= self.streak:
-            count += 1
-            slope = 'positive'
-            if self.players[0].color.lower() == self.board[row][col].lower():
-                self.winner = self.players[0]
-            else:
-                self.winner = self.players[1]
-
-        # check for diagonals with negative slope
-        consecutiveCount = 0
-        j = col
-        for i in range(row, -1, -1):
-            if j >= self.width:
-                break
-            elif self.board[i][j].lower() == self.board[row][col].lower():
-                consecutiveCount += 1
-            else:
-                break
-            j += 1 # increment column when row is decremented
-
-        if consecutiveCount >= self.streak:
-            count += 1
-            slope = 'negative'
-            if self.players[0].color.lower() == self.board[row][col].lower():
-                self.winner = self.players[0]
-            else:
-                self.winner = self.players[1]
-
-        if count > 0:
-            fourInARow = True
-        if count == 2:
-            slope = 'both'
-        return fourInARow, slope#}}}
-    
-    def findStreak(self):
+    def find_streak(self):
         """ Finds start i,j of four-in-a-row
-            Calls highlightStreak
+            Calls highlight_streak
         """
     
         for i in range(self.height):
             for j in range(self.width):
-                if self.board[i][j] != ' ':
+                if self.board[i][j] == ' ':
+                    continue
+                else:
                     # check if a vertical four-in-a-row starts at (i, j)
-                    if self.verticalCheck(i, j):
-                        self.highlightStreak(i, j, 'vertical')
+                    if check_up(self.board, i, j, self.streak):
+                        self.highlight_streak(i, j, 'vertical')
+                        self.winner = self.players[0] if self.players[0].color ==  self.board[i][j] else self.players[1]
                         self.finished = True
                         return
                     
                     # check if a horizontal four-in-a-row starts at (i, j)
-                    if self.horizontalCheck(i, j):
-                        self.highlightStreak(i, j, 'horizontal')
+                    if check_right(self.board, i, j, self.streak):
+                        self.highlight_streak(i, j, 'horizontal')
+                        self.winner = self.players[0] if self.players[0].color ==  self.board[i][j] else self.players[1]
                         self.finished = True
                         return
                     
-                    # check if a diagonal (either way) four-in-a-row starts at (i, j)
-                    # also, get the slope of the four if there is one
-                    diag_fours, slope = self.diagonalCheck(i, j)
-                    if diag_fours:
-                        self.highlightStreak(i, j, 'diagonal', slope)
-                        self.logger.debug(slope)
+                    if check_diagonal_up(self.board, i, j, self.streak):
+                        self.highlight_streak(i, j, 'diagonal_up')
+                        self.winner = self.players[0] if self.players[0].color ==  self.board[i][j] else self.players[1]
+                        self.finished = True
+                        return
+
+                    if check_diagonal_down(self.board, i, j, self.streak):
+                        self.highlight_streak(i, j, 'diagonal_down')
+                        self.winner = self.players[0] if self.players[0].color ==  self.board[i][j] else self.players[1]
                         self.finished = True
                         return
     
-    def highlightStreak(self, row, col, direction, slope=None):
+    def highlight_streak(self, row, col, direction):
         """ This function enunciates four-in-a-rows by capitalizing
             the character for those pieces on the board
         """
@@ -274,23 +169,22 @@ class Game(object):
             for i in range(self.streak):
                 self.board[row][col+i] = self.board[row][col+i].upper()
         
-        elif direction == 'diagonal':
-            if slope == 'positive' or slope == 'both':
-                for i in range(self.streak):
-                    self.board[row+i][col+i] = self.board[row+i][col+i].upper()
+        elif direction == 'diagonal_up':
+            for i in range(self.streak):
+                self.board[row+i][col+i] = self.board[row+i][col+i].upper()
         
-            elif slope == 'negative' or slope == 'both':
-                for i in range(self.streak):
-                    self.board[row-i][col+i] = self.board[row-i][col+i].upper()
+        elif direction == 'diagonal_down':
+            for i in range(self.streak):
+                self.board[row-i][col+i] = self.board[row-i][col+i].upper()
         
         else:
             self.logger.debug("Error - Cannot enunciate four-of-a-kind")
     
-    def printState(self):
+    def print_state(self, stats=None):
         # cross-platform clear screen
-#        os.system( [ 'clear', 'cls' ][ os.name == 'nt' ] )
-#        self.logger.debug(u"{0}!".format(self.game_name))
-#        self.logger.debug("Round: " + str(self.round))
+        os.system( [ 'clear', 'cls' ][ os.name == 'nt' ] )
+        self.logger.debug(u"{0}!".format(self.game_name))
+        self.logger.debug("Round: " + str(self.round))
 
         for i in range(self.height-1, -1, -1):
             print("\t", end="")
@@ -302,6 +196,9 @@ class Game(object):
         for i in range(1,self.width+1):
             column_string += f' {i}  '
         self.logger.debug("\t " + column_string)
+        if stats is not None:
+            print("{0}: {1} wins, {2}: {3} wins, {4} ties".format(
+                        self.players[0].name, stats[0],self.players[1].name, stats[1], stats[2]))
 
         if self.finished:
             self.logger.debug("Game Over!")
@@ -309,4 +206,3 @@ class Game(object):
                 self.logger.debug(str(self.winner.name) + " is the winner")
             else:
                 self.logger.debug("Game was a draw")
-                

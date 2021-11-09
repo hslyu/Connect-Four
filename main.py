@@ -16,7 +16,7 @@ def main():
     
 #    g = Game(verbose=False)
     g = Game(verbose=True)
-    g.printState()
+    g.print_state()
     player1 = g.players[0]
     player2 = g.players[1]
     
@@ -25,11 +25,11 @@ def main():
     exit = False
     while not exit:
         while not g.finished:
-            g.nextMove()
-            a = input()
+            g.next_move()
+#            a = input()
         
-        g.findStreak()
-        g.printState()
+        g.find_streak()
+        g.print_state()
         
         if g.winner == None:
             stats[2] += 1
@@ -40,13 +40,13 @@ def main():
         elif g.winner == player2:
             stats[1] += 1
         
-        printStats(player1, player2, stats)
+        print_stats(player1, player2, stats)
         
         time.sleep(.5)
-        g.newGame()
-        g.printState()
+        g.new_game()
+        g.print_state()
         
-def printStats(player1, player2, stats):
+def print_stats(player1, player2, stats):
     print("{0}: {1} wins, {2}: {3} wins, {4} ties".format(player1.name,
         stats[0], player2.name, stats[1], stats[2]))
         
