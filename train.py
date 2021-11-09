@@ -67,7 +67,7 @@ def save_file(variable, path):
         pickle.dump(variable, f)
 
 def print_status(player1, player2, stats, avg_reward, num_update):
-    print(f'{player1.name}: {stats[0]},\t {player2.name}: {stats[1]},\t\t\t ties : {stats[2]} , \t{avg_reward = }, \t{num_update =}')
+    print(f'{player1.name}: {stats[0]}, {player2.name}: {stats[1]}, ties : {stats[2]} , {avg_reward = }, {num_update =}')
         
 if __name__ == "__main__": # Default "main method" idiom.
     main()
