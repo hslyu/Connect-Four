@@ -1,48 +1,53 @@
-# Python Final Project
-# Connect Four
-#
-# Erik Ackermann
-# Charlene Wang
-#
-# Play connect four
-# February 27, 2012
-
 from connect4 import *
 import time
 
 def main():
-    """ Play a game!
-    """
+    # set game
+    g = Game(verbose=False)
+    diff = 1
+    player1 = QPlayer("Q-agent", g.colors[0] , batch_size=1e3)
+    player2 = MiniMaxPlayer("Minimax", g.colors[1], diff+1)
+    g.set_player(player1, player2)
     
-#    g = Game(verbose=False)
-    g = Game(verbose=True)
-    g.print_state()
-    player1 = g.players[0]
-    player2 = g.players[1]
-    
+    # set game information 
     stats = [0, 0, 0] # [p1 wins, p2 wins, ties]
-    
-    exit = False
-    while not exit:
-        while not g.finished:
-            g.next_move()
-#            a = input()
-        
-        g.find_streak()
-        g.print_state()
-        
-        if g.winner == None:
-            stats[2] += 1
-        
-        elif g.winner == player1:
+    avg_reward = 0
+    num_update = 0
+    avg_reward_list = []
+    stats_list = []
+
+    # Repeat game
+    while True:
+       
+        # Repeat game's turn
+        while True:
+            # Q 플레이어의 움직임은 끝나야 관측함
+            # Q player's move
+            g.play_round()
+            # If finish, observe
+            if g.finished:
+                g.players[0].observe(g.board, g.finished, g.winner)
+                break
+            # M 플레이어의 움직임은 무조건 관측함
+            # M player's move
+            g.play_round()
+            g.players[0].observe(g.board, g.finished, g.winner)
+            if g.finished:
+                break
+
+        if g.winner == player1:
             stats[0] += 1
-            
         elif g.winner == player2:
             stats[1] += 1
+        else:
+            stats[2] += 1
         
-        print_stats(player1, player2, stats)
+#        g.find_streak()
+        g.print_state(stats)
         
-        time.sleep(.5)
+        
+        avg_reward += player1.sum_reward
+        player1.reset()
         g.new_game()
         g.print_state()
         

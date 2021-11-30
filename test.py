@@ -19,8 +19,9 @@ def parent(a):
         return a+1
     return child_fn
 
-a=3
-child=parent(a)
-print(child())
-a+=1
-print(child())
+
+from datetime import datetime
+now = datetime.now()
+
+print(now.strftime("%m-%d %H:%M"))
+print(now)

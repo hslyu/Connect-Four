@@ -59,7 +59,7 @@ class QPlayer(Player):
              # Q[board] = np.array with size self.available_actions(board)
     def __init__(self, name, color, discount_factor = 0.99,
                  streak = STREAK, height = HEIGHT, width = WIDTH, 
-                 epsilon = 0.1, epsilon_min = 0.01, epsilon_decay=0.995, batch_size=1e3):
+                 epsilon = 1, epsilon_min = 0.03, epsilon_decay=0.999, batch_size=5e3):
         self.type = "QPlayer"
         self.name = name
         self.color = color
@@ -72,38 +72,57 @@ class QPlayer(Player):
         self.epsilon = epsilon
         self.Q = {}
         self.count = {}
+        self.board = []
+        self.action = None
         self.discount_factor = discount_factor
 
-        self.buffer = ReplayBuffer(1e5, 1)
+        self.buffer = ReplayBuffer(1e6, 1)
         self.batch_size = batch_size
         self.transition_counter = 0
 
         self.sum_reward = 0
 
-    def reset(self):
-        self.sum_reward = 0
-
-    def __str__(self):
-        return "Q learning player"
-
-    def save(self):
-        with open('data/Q.pkl', 'wb') as f:
-            pickle.dump(self.Q, f)
-        with open('data/epsilon.pkl', 'wb') as f:
-            pickle.dump(self.epsilon, f)
-
-    def load(self):
-        with open('data/Q.pkl', 'rb') as f:
-            self.Q = pickle.load(f)
-        with open('data/epsilon.pkl', 'rb') as f:
-            self.epsilon = pickle.load(f)
-
     def move(self, board):
-        action = self._move(board)
-        reward = self.calc_reward(board, action)
+        # report : number of actions varies with the state
+
+        # If some columns are full, we cannot put at full column
+        actions = available_moves(board)
+
+        state = self._get_key_from_board(board)
+        # if there's no updated Q values, register key "board" in Q
+        if state not in self.Q.keys() or np.random.random() < self.epsilon:
+            chosen_action_index = np.random.choice(actions)
+        else:
+            Q_max = -1e20
+            for action in self.Q[state].keys():
+                if self.Q[state][action] > Q_max:
+                    Q_max = self.Q[state][action] 
+                    best_index = action
+            tie = [k for k in self.Q[state].keys() if self.Q[state][k] == self.Q[state][best_index]]
+            chosen_action_index = np.random.choice(tie)
+
+        self.board = copy.deepcopy(board)
+        self.action = chosen_action_index
+        return chosen_action_index
+
+    # step function
+    def observe(self, next_board, done, winner):
+        board = self.board
+        action = self.action
+
+        reward = self.calc_reward(board, next_board, done, winner)
         self.sum_reward += reward
-        done, result = self.calc_done(board, action)
-        next_board = calc_next_board(board, action, self.color)
+
+#        for row in board:
+#            print(row)
+#        print(f'{action =}')
+#        for row in next_board:
+#            print(row)
+#        print(f'{reward = }')
+#        print(f'{done = }')
+#        print(f'{winner = }')
+
+
         # board is list, so it is unhashable
         # tuple is hashable
         state = self._get_key_from_board(board)
@@ -111,41 +130,51 @@ class QPlayer(Player):
 
         #Todo: define transition
         #Todo: seperate update and move
-        self.buffer.push(state,action,next_state,reward,done)
+        self.buffer.push(state, action, next_state, reward, done)
         self.transition_counter += 1
         return action
 
-    def calc_reward(self, board, action):
-        done, result = self.calc_done(board, action)
-        if done and result == 'winner':
-            return 1e10
-        elif done and result == 'loser':
-            return -1e10
-        elif done and result =='tie':
-            return -1e3
+    def calc_reward(self, board, next_board, done, winner):
+        if done and winner == self:
+            return 1e4
+        elif done and (winner == None):
+            return -1e2
+        elif done and (winner is not None): ## Opponent wins
+            return -1e4
 
-        m = Minimax(self.opp_color)
-        next_board = calc_next_board(board, action, self.color)
-        opp_best_move, opp_value = m.best_move(2, next_board, self.opp_color)
+        streak_diffs = [check_streak(next_board, self.color, streak) 
+                                        - check_streak(board, self.color, streak) 
+                                                    for streak in range(2, self.streak)]
+        opp_streak_diffs = [check_streak(next_board, self.opp_color, streak) 
+                                        - check_streak(board, self.opp_color, streak) 
+                                                    for streak in range(2, self.streak)]
+#        print(f'{streak_diffs = }')
+#        print(f'{opp_streak_diffs = }')
 
-        reward = -opp_value
+        reward = 0
+        for i,v in enumerate(streak_diffs):
+            reward += v*15**(i+1)
+
+        for i,v in enumerate(opp_streak_diffs):
+            reward -= v*10**(i+1)
+
         return reward
     
-    def calc_done(self, board, action):
-        """
-        Return:
-            done, isWinner (bool, {bool, None}): whether this game is finished,
-                                                 whether the Q player wins, loses, and ties.
-        """
-        next_board = calc_next_board(board, action, self.color)
-        if check_streak(next_board, self.color, self.streak) > 0:
-            return True, "win"
-        elif check_streak(next_board, self.opp_color, self.streak) > 0:
-            return True, "lose"
-        elif not np.any(np.array(board[-1]) == ' '):
-            return True, "tie"
-
-        return False, "ongoing"
+#    def calc_done(self, board, action):
+#        """
+#        Return:
+#            done, isWinner (bool, str): whether this game is finished,
+#                                                 whether the Q player wins, loses, and ties.
+#        """
+#        next_board = calc_next_board(board, action, self.color)
+#        if check_streak(next_board, self.color, self.streak) > 0:
+#            return True, "win"
+#        elif check_streak(next_board, self.opp_color, self.streak) > 0:
+#            return True, "lose"
+#        elif not np.any(np.array(board[-1]) == ' '):
+#            return True, "tie"
+#
+#        return False, "ongoing"
 
     def is_updatable(self):
         return self.transition_counter >= self.batch_size
@@ -187,11 +216,10 @@ class QPlayer(Player):
                 print(f'{best_next_action= }, {action =}')
                 exit()
             self.Q[state][action] += delta/self.count[state]
-#            print(f'{self.Q[state][action] =}')
 
         if self.epsilon >= self.epsilon_min:
             self.epsilon *= self.epsilon_decay
-            self.transition_counter = 0
+        self.transition_counter = 0
 
     def _get_key_from_board(self, board):
         return np.array(board).tobytes()
@@ -201,26 +229,28 @@ class QPlayer(Player):
         np_array = np_array.reshape((self.height, self.width))
         return np_array.tolist()
     
-    def _move(self, board):
-        # report : number of actions varies with the state
+    def reset(self):
+        self.sum_reward = 0
 
-        # If some columns are full, we cannot put at full column
-        actions = available_moves(board)
+    def __str__(self):
+        return "Q learning player"
 
-        state = self._get_key_from_board(board)
-        # if there's no updated Q values, register key "board" in Q
-        if state not in self.Q.keys() or np.random.random() < self.epsilon:
-            chosen_action_index = np.random.choice(actions)
-        else:
-            Q_max = -1e20
-            for action in self.Q[state].keys():
-                if self.Q[state][action] > Q_max:
-                    Q_max = self.Q[state][action] 
-                    best_index = action
-            tie = [k for k in self.Q[state].keys() if self.Q[state][k] == self.Q[state][best_index]]
-            chosen_action_index = np.random.choice(tie)
+    def save(self):
+        with open('data/Q.pkl', 'wb') as f:
+            pickle.dump(self.Q, f)
+        with open('data/epsilon.pkl', 'wb') as f:
+            pickle.dump(self.epsilon, f)
 
-        return chosen_action_index
+    def load(self):
+        with open('data/Q.pkl', 'rb') as f:
+            self.Q = pickle.load(f)
+        with open('data/epsilon.pkl', 'rb') as f:
+            self.epsilon = pickle.load(f)
+
+    def __repr__(self):
+        return "Q learning player"
+
+
 
 class MiniMaxPlayer(Player):
     """ MiniMaxPlayer object that extends Player
@@ -245,6 +275,9 @@ class MiniMaxPlayer(Player):
         m = Minimax(self.color)
         opt_move, _ = m.best_move(self.difficulty, board, self.color)
         return opt_move
+
+    def __repr__(self):
+        return "Minimax Player"
 
 def main():
     player = QPlayer('','o', epsilon=1)

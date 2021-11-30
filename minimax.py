@@ -65,7 +65,7 @@ class Minimax(object):
         for i, v in enumerate(n_streaks[:-1]):
             value += v*100**i
         # termination condition
-        value += n_streaks[-1]*1e10
+        value += n_streaks[-1]*1e15
 
         opp_n_streaks  = [check_streak(state, opp_color, streak) for streak in range(2,self.num_streak+1)]
         for i, v in enumerate(opp_n_streaks[:-1]):

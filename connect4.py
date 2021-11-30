@@ -50,24 +50,20 @@ class Game(object):
         self.formatter = logging.Formatter('%(message)s')
         self.handler.setFormatter(self.formatter)
         
-        diff = 1
-        # do cross-platform clear screen
-#        os.system( [ 'clear', 'cls' ][ os.name == 'nt' ] )
-        self.players[0] = QPlayer("Player 1", self.colors[0], batch_size=1e3)
-#        self.players[0] = HumanPlayer("Player 1", self.colors[0])
-        self.logger.debug("{0} will be {1}".format(self.players[0].name, self.colors[0]))
-        
-        self.players[1] = MiniMaxPlayer("Player 2", self.colors[1], diff+1)
-        self.logger.debug("{0} will be {1}".format(self.players[1].name, self.colors[1]))
-        
-        # x always goes first (arbitrary choice on my part)
-        self.turn = self.players[0]
-        
         self.board = []
         for i in range(self.height):
             self.board.append([])
             for j in range(self.width):
                 self.board[i].append(' ')
+
+    def set_player(self, p1, p2):
+        self.players = [p1,p2]
+        self.logger.debug("{0} will be {1}".format(self.players[0].name, self.colors[0]))
+        self.logger.debug("{0} will be {1}".format(self.players[1].name, self.colors[1]))
+
+        # x always goes first (arbitrary choice on my part)
+        self.turn = self.players[0]
+        
     
     def new_game(self):
         """ Function to reset the game, but not the names or colors
@@ -94,28 +90,29 @@ class Game(object):
         # increment the round
         self.round += 1
 
-    def next_move(self):
+    def play_round(self):
         player = self.turn
 
-        # there are only 42 legal places for pieces on the board
-        # exactly one piece is added to the board each turn
         if self.round > self.width*self.height:
+            self.winner = None
             self.finished = True
-            # this would be a stalemate :(
             return
-        
+    
         # move is the column that player want's to play
         self.logger.debug("{0}'s turn.  {0} is {1}".format(player.name, player.color))
         move = player.move(self.board)
-
         for i in range(self.height):
-            if self.board[i][move] == ' ':
-                self.board[i][move] = player.color
-                self.switch_turn()
-                self.find_streak()
-                if self.verbose:
-                    self.print_state()
-                return
+            try:
+                if self.board[i][move] == ' ':
+                    self.board[i][move] = player.color
+                    self.find_streak()
+                    self.switch_turn()
+                    if self.verbose:
+                        self.print_state()
+                    return
+            except TypeError:
+                print(f'{player.name = }, {i = }, {move = }')
+                exit()
         # if we get here, then the column is full
         self.logger.debug("Invalid move (column is full)")
         return
@@ -124,7 +121,7 @@ class Game(object):
         """ Finds start i,j of four-in-a-row
             Calls highlight_streak
         """
-    
+
         for i in range(self.height):
             for j in range(self.width):
                 if self.board[i][j] == ' ':
@@ -132,27 +129,24 @@ class Game(object):
                 else:
                     # check if a vertical four-in-a-row starts at (i, j)
                     if check_up(self.board, i, j, self.streak):
+                        self.winner = self.players[0] if self.players[0].color == self.board[i][j].lower() else self.players[1]
                         self.highlight_streak(i, j, 'vertical')
-                        self.winner = self.players[0] if self.players[0].color ==  self.board[i][j] else self.players[1]
                         self.finished = True
                         return
-                    
                     # check if a horizontal four-in-a-row starts at (i, j)
-                    if check_right(self.board, i, j, self.streak):
+                    elif check_right(self.board, i, j, self.streak):
+                        self.winner = self.players[0] if self.players[0].color == self.board[i][j].lower() else self.players[1]
                         self.highlight_streak(i, j, 'horizontal')
-                        self.winner = self.players[0] if self.players[0].color ==  self.board[i][j] else self.players[1]
                         self.finished = True
                         return
-                    
-                    if check_diagonal_up(self.board, i, j, self.streak):
+                    elif check_diagonal_up(self.board, i, j, self.streak):
+                        self.winner = self.players[0] if self.players[0].color == self.board[i][j].lower() else self.players[1]
                         self.highlight_streak(i, j, 'diagonal_up')
-                        self.winner = self.players[0] if self.players[0].color ==  self.board[i][j] else self.players[1]
                         self.finished = True
                         return
-
-                    if check_diagonal_down(self.board, i, j, self.streak):
+                    elif check_diagonal_down(self.board, i, j, self.streak):
+                        self.winner = self.players[0] if self.players[0].color == self.board[i][j].lower() else self.players[1]
                         self.highlight_streak(i, j, 'diagonal_down')
-                        self.winner = self.players[0] if self.players[0].color ==  self.board[i][j] else self.players[1]
                         self.finished = True
                         return
     
@@ -182,8 +176,8 @@ class Game(object):
     
     def print_state(self, stats=None):
         # cross-platform clear screen
-        os.system( [ 'clear', 'cls' ][ os.name == 'nt' ] )
-        self.logger.debug(u"{0}!".format(self.game_name))
+#        os.system( [ 'clear', 'cls' ][ os.name == 'nt' ] )
+#        self.logger.debug(u"{0}!".format(self.game_name))
         self.logger.debug("Round: " + str(self.round))
 
         for i in range(self.height-1, -1, -1):

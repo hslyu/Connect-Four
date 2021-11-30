@@ -15,13 +15,13 @@ def check_streak(state, color, streak):
                 count += check_up(state, i, j, streak)
                 
                 # check if a horizontal four-in-a-row starts at (i, j)
-                count += check_right(state ,i, j, streak)
+                count += check_right(state, i, j, streak)
                 
                 # check if a diagonal up four-in-a-row starts at (i, j)
-                count += check_diagonal_up(state ,i, j, streak)
+                count += check_diagonal_up(state, i, j, streak)
 
                 # check if a diagonal down  four-in-a-row starts at (i, j)
-                count += check_diagonal_down(state ,i, j, streak)
+                count += check_diagonal_down(state, i, j, streak)
     # return the sum of streaks of length 'streak'
     return count
 
@@ -59,7 +59,7 @@ def check_diagonal_up(board, row, col, streak):
     for i in range(streak):
         if row + i >= HEIGHT-1 or col + i >= WIDTH-1:
             break
-        elif board[row+i][row+i] == board[row][col]:
+        elif board[row+i][col+i] == board[row][col]:
             consecutive += 1
         else:
             break
@@ -73,7 +73,7 @@ def check_diagonal_down(board, row, col, streak):
     # check for diagonals with negative slope
     consecutive = 0
     for i in range(streak):
-        if row + i <= 0 or col + i >= WIDTH-1:
+        if row - i <= 0 or col + i >= WIDTH-1:
             break
         elif board[row-i][col+i].lower() == board[row][col].lower():
             consecutive += 1
@@ -108,3 +108,10 @@ def available_moves(state):
         (numpy array) : index of columns that are not full.
     '''
     return np.argwhere(np.array(state[-1]) == ' ').ravel()
+
+if __name__=='__main__':
+    board = [[0,1,0,0,0], [0,0,1,0,0], [0,0,0,0,0]]
+    for i in range(3):
+        for j in range(5):
+            if board[i][j] ==1:
+                print(i,j,check_diagonal_up(board, i, j, 2))
