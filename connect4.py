@@ -1,12 +1,3 @@
-# Python Final Project
-# Connect Four
-#
-# Erik Ackermann
-# Charlene Wang
-#
-# Connect n Module
-# February 27, 2012
-
 import random
 import os
 from player import *

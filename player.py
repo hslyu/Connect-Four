@@ -204,10 +204,13 @@ class QPlayer(Player):
                     self.Q[next_state][a] = 0
 
             self.count[state] += 1
-            max_next_q = -1e20
-            for action in self.Q[next_state].keys():
-                if self.Q[state][action] > max_next_q:
-                    max_next_q = self.Q[state][action] 
+            if self.Q[next_state] == {}:
+                max_next_q = 0
+            else:
+                max_next_q = -1e20
+                for action in self.Q[next_state].keys():
+                    if self.Q[state][action] > max_next_q:
+                        max_next_q = self.Q[state][action] 
             try:
                 delta = reward + self.discount_factor*max_next_q - self.Q[state][action]
             except KeyError:
@@ -215,7 +218,7 @@ class QPlayer(Player):
                 print(f'{available_moves(next_board) = }')
                 print(f'{best_next_action= }, {action =}')
                 exit()
-            self.Q[state][action] += delta/self.count[state]
+            self.Q[state][action] += delta*0.1
 
         if self.epsilon >= self.epsilon_min:
             self.epsilon *= self.epsilon_decay
@@ -241,11 +244,11 @@ class QPlayer(Player):
         with open('data/epsilon.pkl', 'wb') as f:
             pickle.dump(self.epsilon, f)
 
-    def load(self):
-        with open('data/Q.pkl', 'rb') as f:
+    def load(self, filecode):
+        with open(f'data/{filecode}Q.pkl', 'rb') as f:
             self.Q = pickle.load(f)
-        with open('data/epsilon.pkl', 'rb') as f:
-            self.epsilon = pickle.load(f)
+#        with open('data/epsilon.pkl', 'rb') as f:
+#            self.epsilon = pickle.load(f)
 
     def __repr__(self):
         return "Q learning player"

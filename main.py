@@ -49,7 +49,7 @@ def main():
         avg_reward += player1.sum_reward
         player1.reset()
         g.new_game()
-        g.print_state()
+#        g.print_state()
         
 def print_stats(player1, player2, stats):
     print("{0}: {1} wins, {2}: {3} wins, {4} ties".format(player1.name,

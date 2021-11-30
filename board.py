@@ -57,7 +57,7 @@ def check_diagonal_up(board, row, col, streak):
     # check for diagonals with positive slope
     consecutive = 0
     for i in range(streak):
-        if row + i >= HEIGHT-1 or col + i >= WIDTH-1:
+        if row + i > HEIGHT-1 or col + i > WIDTH-1:
             break
         elif board[row+i][col+i] == board[row][col]:
             consecutive += 1
@@ -73,9 +73,9 @@ def check_diagonal_down(board, row, col, streak):
     # check for diagonals with negative slope
     consecutive = 0
     for i in range(streak):
-        if row - i <= 0 or col + i >= WIDTH-1:
+        if row - i < 0 or col + i > WIDTH-1:
             break
-        elif board[row-i][col+i].lower() == board[row][col].lower():
+        elif board[row-i][col+i] == board[row][col]:
             consecutive += 1
         else:
             break
@@ -110,8 +110,14 @@ def available_moves(state):
     return np.argwhere(np.array(state[-1]) == ' ').ravel()
 
 if __name__=='__main__':
-    board = [[0,1,0,0,0], [0,0,1,0,0], [0,0,0,0,0]]
+    board = [[0,1,0,1,0], 
+             [0,0,1,0,0], 
+             [0,1,0,1,0]]
     for i in range(3):
         for j in range(5):
             if board[i][j] ==1:
-                print(i,j,check_diagonal_up(board, i, j, 2))
+                print(i,j,check_diagonal_up(board, i, j, 3))
+    for i in range(3):
+        for j in range(5):
+            if board[i][j] ==1:
+                print(i,j,check_diagonal_down(board, i, j, 3))
