@@ -21,6 +21,13 @@ class Player:
     def move(self, board):
         return 0
 
+class DQNPlayer(Player):
+    def __init__(self):
+        1
+
+    def __str__(self):
+        return "DQN player"
+
 class HumanPlayer(Player):
     """ Player object.  This class is for human players.
     """
@@ -63,7 +70,7 @@ class QPlayer(Player):
         self.type = "QPlayer"
         self.name = name
         self.color = color
-        self.opp_color = 'x' if color == 'o' else 'o'
+        self.opp_color = -1 if color == 1 else 'o'
         self.streak = streak
         self.width = width
         self.height = height
@@ -160,22 +167,6 @@ class QPlayer(Player):
 
         return reward
     
-#    def calc_done(self, board, action):
-#        """
-#        Return:
-#            done, isWinner (bool, str): whether this game is finished,
-#                                                 whether the Q player wins, loses, and ties.
-#        """
-#        next_board = calc_next_board(board, action, self.color)
-#        if check_streak(next_board, self.color, self.streak) > 0:
-#            return True, "win"
-#        elif check_streak(next_board, self.opp_color, self.streak) > 0:
-#            return True, "lose"
-#        elif not np.any(np.array(board[-1]) == ' '):
-#            return True, "tie"
-#
-#        return False, "ongoing"
-
     def is_updatable(self):
         return self.transition_counter >= self.batch_size
         
@@ -228,7 +219,7 @@ class QPlayer(Player):
         return np.array(board).tobytes()
 
     def _get_board_from_key(self, key):
-        np_array = np.frombuffer(key, dtype='<U1')
+        np_array = np.frombuffer(key, dtype='int64')
         np_array = np_array.reshape((self.height, self.width))
         return np_array.tolist()
     
@@ -283,12 +274,12 @@ class MiniMaxPlayer(Player):
         return "Minimax Player"
 
 def main():
-    player = QPlayer('','o', epsilon=1)
+    player = QPlayer('',1, epsilon=1)
     board = []
     for i in range(HEIGHT):
         board.append([])
         for j in range(WIDTH):
-            board[i].append(' ')
+            board[i].append(0)
     print(f'{player._move(board)}')
     while True:
         action = player.move(board)

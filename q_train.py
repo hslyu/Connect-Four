@@ -9,7 +9,7 @@ def main():
     g = Game(verbose=False)
     diff = 1
     player1 = QPlayer("Q-agent", g.colors[0] , batch_size=5e3, epsilon=.1, epsilon_min=0.0, epsilon_decay=0.9999)
-    player1.load('11-12-22:15_small_board_')
+#    player1.load('11-12-22:15_small_board_')
 #    print(len(player1.Q))
     player2 = MiniMaxPlayer("Minimax", g.colors[1], diff+1)
     g.set_player(player1, player2)
@@ -17,7 +17,7 @@ def main():
     # set game information 
     stats = [0, 0, 0] # [p1 wins, p2 wins, ties]
     avg_reward = 0
-    num_update = 11665
+    num_update = 0
     avg_reward_list = []
     stats_list = []
 

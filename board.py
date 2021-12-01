@@ -10,7 +10,7 @@ def check_streak(state, color, streak):
     for i in range(HEIGHT):
         for j in range(WIDTH):
             # ...that is of the color we're looking for...
-            if state[i][j].lower() == color.lower():
+            if state[i][j] == color:
                 # check if a vertical streak starts at (i, j)
                 count += check_up(state, i, j, streak)
                 
@@ -94,7 +94,7 @@ def calc_next_board(state, column, color):
     """
     next_board = copy.deepcopy(state)
     for i in range(HEIGHT):
-        if next_board[i][column] == ' ':
+        if next_board[i][column] == 0:
             next_board[i][column] = color
             break
     return next_board
@@ -107,17 +107,33 @@ def available_moves(state):
     return
         (numpy array) : index of columns that are not full.
     '''
-    return np.argwhere(np.array(state[-1]) == ' ').ravel()
+    return np.argwhere(np.array(state[-1]) == 0).ravel()
 
 if __name__=='__main__':
     board = [[0,1,0,1,0], 
-             [0,0,1,0,0], 
+             [0,0,1,1,1], 
              [0,1,0,1,0]]
+    """
+    for i in board:
+        print(i)
+    print('---------- up ----------')
+    for i in range(3):
+        for j in range(5):
+            if board[i][j] ==1:
+                print(i,j,check_up(board, i, j, 3))
+    print('---------- right ----------')
+    for i in range(3):
+        for j in range(5):
+            if board[i][j] ==1:
+                print(i,j,check_right(board, i, j, 3))
+    print('---------- diag_up ----------')
     for i in range(3):
         for j in range(5):
             if board[i][j] ==1:
                 print(i,j,check_diagonal_up(board, i, j, 3))
+    print('---------- diag_down ----------')
     for i in range(3):
         for j in range(5):
             if board[i][j] ==1:
                 print(i,j,check_diagonal_down(board, i, j, 3))
+    """

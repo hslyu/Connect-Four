@@ -4,8 +4,8 @@ import time
 def main():
     # set game
     g = Game(verbose=False)
-    diff = 1
-    player1 = QPlayer("Q-agent", g.colors[0] , batch_size=1e3)
+    diff = 2
+    player1 = QPlayer("Q-agent", g.colors[0] , epsilon=1, epsilon_decay=1)
     player2 = MiniMaxPlayer("Minimax", g.colors[1], diff+1)
     g.set_player(player1, player2)
     
@@ -28,12 +28,16 @@ def main():
             if g.finished:
                 g.players[0].observe(g.board, g.finished, g.winner)
                 break
+            g.print_state()
+            a=input('enter to proceed')
             # M 플레이어의 움직임은 무조건 관측함
             # M player's move
             g.play_round()
             g.players[0].observe(g.board, g.finished, g.winner)
             if g.finished:
                 break
+            g.print_state()
+            a=input('enter to proceed')
 
         if g.winner == player1:
             stats[0] += 1

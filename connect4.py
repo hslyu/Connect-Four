@@ -21,7 +21,7 @@ class Game(object):
     turn = None
     players = [None, None]
     game_name = u"Connecter Quatre\u2122" # U+2122 is "tm" this is a joke
-    colors = ["x", "o"]
+    colors = [-1, 1]
     
     def __init__(self, width = WIDTH, height = HEIGHT, streak = STREAK, verbose=True):
         self.round = 1
@@ -45,7 +45,7 @@ class Game(object):
         for i in range(self.height):
             self.board.append([])
             for j in range(self.width):
-                self.board[i].append(' ')
+                self.board[i].append(0)
 
     def set_player(self, p1, p2):
         self.players = [p1,p2]
@@ -70,7 +70,7 @@ class Game(object):
         for i in range(self.height):
             self.board.append([])
             for j in range(self.width):
-                self.board[i].append(' ')
+                self.board[i].append(0)
 
     def switch_turn(self):
         if self.turn == self.players[0]:
@@ -94,7 +94,7 @@ class Game(object):
         move = player.move(self.board)
         for i in range(self.height):
             try:
-                if self.board[i][move] == ' ':
+                if self.board[i][move] == 0:
                     self.board[i][move] = player.color
                     self.find_streak()
                     self.switch_turn()
@@ -115,66 +115,69 @@ class Game(object):
 
         for i in range(self.height):
             for j in range(self.width):
-                if self.board[i][j] == ' ':
+                if self.board[i][j] == 0:
                     continue
                 else:
-                    # check if a vertical four-in-a-row starts at (i, j)
-                    if check_up(self.board, i, j, self.streak):
-                        self.winner = self.players[0] if self.players[0].color == self.board[i][j].lower() else self.players[1]
-                        self.highlight_streak(i, j, 'vertical')
-                        self.finished = True
-                        return
-                    # check if a horizontal four-in-a-row starts at (i, j)
-                    elif check_right(self.board, i, j, self.streak):
-                        self.winner = self.players[0] if self.players[0].color == self.board[i][j].lower() else self.players[1]
-                        self.highlight_streak(i, j, 'horizontal')
-                        self.finished = True
-                        return
-                    elif check_diagonal_up(self.board, i, j, self.streak):
-                        self.winner = self.players[0] if self.players[0].color == self.board[i][j].lower() else self.players[1]
-                        self.highlight_streak(i, j, 'diagonal_up')
-                        self.finished = True
-                        return
-                    elif check_diagonal_down(self.board, i, j, self.streak):
-                        self.winner = self.players[0] if self.players[0].color == self.board[i][j].lower() else self.players[1]
-                        self.highlight_streak(i, j, 'diagonal_down')
-                        self.finished = True
-                        return
+                    # check the 3 streaks
+                    functions = [check_up, check_right, check_diagonal_up, check_diagonal_down]
+                    for f in functions:
+                        if f(self.board, i,j, self.streak):
+                            self.winner = self.players[0] if self.players[0].color == self.board[i][j] else self.players[1]
+                            self.finished = True
+                            return i, j, f # row, column, function
+
+        return None
     
-    def highlight_streak(self, row, col, direction):
+    def highlight_streak(self, board):
         """ This function enunciates four-in-a-rows by capitalizing
             the character for those pieces on the board
         """
-        
-        if direction == 'vertical':
+        if self.find_streak() ==  None:
+            return board
+
+        row, col, f = self.find_streak() 
+        if f == check_up:
             for i in range(self.streak):
-                self.board[row+i][col] = self.board[row+i][col].upper()
+                board[row+i][col] = board[row+i][col].upper()
         
-        elif direction == 'horizontal':
+        elif f == check_right:
             for i in range(self.streak):
-                self.board[row][col+i] = self.board[row][col+i].upper()
+                board[row][col+i] = board[row][col+i].upper()
         
-        elif direction == 'diagonal_up':
+        elif f == check_diagonal_up:
             for i in range(self.streak):
-                self.board[row+i][col+i] = self.board[row+i][col+i].upper()
+                board[row+i][col+i] = board[row+i][col+i].upper()
         
-        elif direction == 'diagonal_down':
+        elif f == check_diagonal_down:
             for i in range(self.streak):
-                self.board[row-i][col+i] = self.board[row-i][col+i].upper()
-        
-        else:
-            self.logger.debug("Error - Cannot enunciate four-of-a-kind")
+                board[row-i][col+i] = board[row-i][col+i].upper()
+
+        return board
     
-    def print_state(self, stats=None):
+    def print_state(self, stats=None, encoding=True):
         # cross-platform clear screen
 #        os.system( [ 'clear', 'cls' ][ os.name == 'nt' ] )
 #        self.logger.debug(u"{0}!".format(self.game_name))
         self.logger.debug("Round: " + str(self.round))
 
+        encoded_board = copy.deepcopy(self.board)
+
+        for i in range(self.height):
+            for j in range(self.width):
+                if encoded_board[i][j] == 0: 
+                    encoded_board[i][j] = ' ' 
+                elif encoded_board[i][j] == -1:
+                    encoded_board[i][j] = 'x'
+                else:
+                    encoded_board[i][j] = 'o'
+
+        if self.finished:
+            encoded_board = self.highlight_streak(encoded_board)
+
         for i in range(self.height-1, -1, -1):
             print("\t", end="")
             for j in range(self.width):
-                print("| " + str(self.board[i][j]), end=" ")
+                print("| " + str(encoded_board[i][j]), end=" ")
             print("|")
         self.logger.debug("\t "+" _  "*self.width)
         column_string = ''
