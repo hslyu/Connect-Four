@@ -99,7 +99,7 @@ def calc_next_board(state, column, color):
             break
     return next_board
 
-def available_moves(state):
+def available_moves(state, boolean = False):
     '''
     board[-1] is highest row
     params
@@ -107,12 +107,18 @@ def available_moves(state):
     return
         (numpy array) : index of columns that are not full.
     '''
-    return np.argwhere(np.array(state[-1]) == 0).ravel()
+    
+    if boolean:
+        return list(map(lambda x: x == 0, state[-1]))
+    else:
+        return [i for i, element in enumerate(state[-1]) if element == 0]
 
 if __name__=='__main__':
     board = [[0,1,0,1,0], 
              [0,0,1,1,1], 
-             [0,1,0,1,0]]
+             [0,1,0,0,0]]
+    print(available_moves(board, True))
+    print(available_moves(board))
     """
     for i in board:
         print(i)

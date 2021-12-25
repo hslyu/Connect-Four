@@ -28,7 +28,7 @@ class Minimax(object):
             In current board "state", player in "color" foresees "depth" step further
             and gets the best action
         """
-        opp_color = 'x' if color == 'o' else 'o'
+        opp_color = -1 if color == 0 else 0
 
         # enumerate all legal moves
         legal_moves = available_moves(state)
@@ -58,7 +58,7 @@ class Minimax(object):
             3-in-a-rows)*100 - (num of opponent 2-in-a-rows)*10
         """
 
-        opp_color = 'x' if color == 'o' else 'o'
+        opp_color = -1 if color == 0 else 0
 
         n_streaks  = [check_streak(state, color, streak) for streak in range(2,self.num_streak+1)]
         value = 0

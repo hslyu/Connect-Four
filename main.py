@@ -5,7 +5,7 @@ def main():
     # set game
     g = Game(verbose=False)
     diff = 2
-    player1 = QPlayer("Q-agent", g.colors[0] , epsilon=1, epsilon_decay=1)
+    player1 = DQNPlayer("Q-agent", g.colors[0] , epsilon=1, epsilon_decay=1)
     player2 = MiniMaxPlayer("Minimax", g.colors[1], diff+1)
     g.set_player(player1, player2)
     

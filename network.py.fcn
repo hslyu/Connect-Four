@@ -9,39 +9,49 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class DQN(nn.Module):
     def __init__(self, h, w, outputs):
         super(DQN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 81, kernel_size = 2)
-        self.conv2 = nn.Conv2d(81, 32, kernel_size = 1)
-        self.conv3 = nn.Conv2d(32, 256, kernel_size = 2)
 
-        def conv2d_size_out(size, kernel_size = 2, stride = 1):
-            return (size - kernel_size)//stride + 1
-
-        convh = conv2d_size_out(conv2d_size_out(h))
-        convw = conv2d_size_out(conv2d_size_out(w))
-        linear_input_size = convh*convw*256
-        self.fc7 = nn.Linear(linear_input_size, linear_input_size//4, bias=True)
-        self.fc8 = nn.Linear(linear_input_size//4, linear_input_size//4, bias=True)
-        self.fc9 = nn.Linear(linear_input_size//4, linear_input_size//8, bias=True)
-        self.fc10 = nn.Linear(linear_input_size//8, linear_input_size//8, bias=True)
-        self.fc11 = nn.Linear(linear_input_size//8, linear_input_size//8, bias=True)
-        self.fc12 = nn.Linear(linear_input_size//8, linear_input_size//16, bias=True)
-        self.fc13 = nn.Linear(linear_input_size//16, outputs)
+        linear_input_size = h*w
+        self.fc1 = nn.Linear(linear_input_size, linear_input_size, bias=True)
+        self.fc2 = nn.Linear(linear_input_size, linear_input_size, bias=True)
+        self.fc3 = nn.Linear(linear_input_size, linear_input_size*2, bias=True)
+        self.fc4 = nn.Linear(linear_input_size*2, linear_input_size*2, bias=True)
+        self.fc5 = nn.Linear(linear_input_size*2, linear_input_size*2, bias=True)
+        self.fc6 = nn.Linear(linear_input_size*2, linear_input_size*4, bias=True)
+        self.fc7 = nn.Linear(linear_input_size*4, linear_input_size*4, bias=True)
+        self.fc8 = nn.Linear(linear_input_size*4, linear_input_size*4, bias=True)
+        self.fc9 = nn.Linear(linear_input_size*4, linear_input_size*8, bias=True)
+        self.fc10 = nn.Linear(linear_input_size*8, linear_input_size*8, bias=True)
+        self.fc11 = nn.Linear(linear_input_size*8, linear_input_size*8, bias=True)
+        self.fc12 = nn.Linear(linear_input_size*8, linear_input_size*4, bias=True)
+        self.fc13 = nn.Linear(linear_input_size*4, linear_input_size*4, bias=True)
+        self.fc14 = nn.Linear(linear_input_size*4, linear_input_size*4, bias=True)
+        self.fc15 = nn.Linear(linear_input_size*4, linear_input_size*2, bias=True)
+        self.fc16 = nn.Linear(linear_input_size*2, outputs)
 
     def forward(self, x):
         x = x.to(device).float()
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        # Flatten
         x = x.view(x.size(0),-1)
+        residual = x
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x)+residual)
+        x = F.relu(self.fc3(x))
+        residual = x
+        x = F.relu(self.fc4(x))
+        x = F.relu(self.fc5(x)+residual)
+        x = F.relu(self.fc6(x))
+        residual = x
         x = F.relu(self.fc7(x))
-        x = F.relu(self.fc8(x))
+        x = F.relu(self.fc8(x)+residual)
         x = F.relu(self.fc9(x))
         residual = x
         x = F.relu(self.fc10(x))
         x = F.relu(self.fc11(x)+residual)
         x = F.relu(self.fc12(x))
-        return self.fc13(x)
+        residual = x
+        x = F.relu(self.fc13(x))
+        x = F.relu(self.fc14(x)+residual)
+        x = F.relu(self.fc15(x))
+        return self.fc16(x)
 
 if __name__ == "__main__":
     import numpy as np

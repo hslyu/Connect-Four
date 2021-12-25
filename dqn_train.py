@@ -8,9 +8,7 @@ def main():
     # set game
     g = Game(verbose=False)
     diff = 1
-    player1 = QPlayer("Q-agent", g.colors[0] , batch_size=5e3, epsilon=1, epsilon_min=0.01, epsilon_decay=0.995)
-#    player1.load('11-12-22:15_small_board_')
-#    print(len(player1.Q))
+    player1 = DQNPlayer("DQN-agent", g.colors[0] , batch_size=1024, epsilon=1, epsilon_min=0.01, epsilon_decay=0.995, gamma=0.001, lr=0.001)
     player2 = MiniMaxPlayer("Minimax", g.colors[1], diff+1)
     g.set_player(player1, player2)
     
@@ -20,9 +18,11 @@ def main():
     num_update = 0
     avg_reward_list = []
     stats_list = []
+    loss_list = []
 
     now = datetime.now()
     filecode = now.strftime("%m-%d-%H:%M")
+    loss = 0
 
     # Repeat game
     while True:
@@ -61,11 +61,13 @@ def main():
 
 #        g.print_state(stats)
         if player1.is_updatable():
-            player1.update()
-#            save_file(player1.Q, f'data/{filecode}_Q.pkl')
-#            save_file(player1.epsilon, f'data/{filecode}_epsilon.pkl')
-#            save_file(player1.count, f'data/{filecode}_count.pkl')
+            loss = player1.update()
+            loss_list.append(loss)
+
+            save_file(loss_list, f'data/{filecode}_loss.pkl')
             num_update += 1
+            if num_update != 0 and num_update % 5 == 0:
+                player1.soft_update(1)
 
         if sum(stats) == 1000:
             avg_reward_list.append(avg_reward/1000)
@@ -74,7 +76,7 @@ def main():
             save_file(stats_list, f'data/{filecode}_stats.pkl')
             save_file(avg_reward_list, f'data/{filecode}_avg_reward.pkl')
 
-            print_status(player1, player2, stats, avg_reward_list[-1], num_update)
+            print_status(player1, player2, stats, avg_reward_list[-1], num_update, loss)
             avg_reward = 0 # reset avg reward
             stats = [0,0,0]
             
@@ -82,8 +84,8 @@ def save_file(variable, path):
     with open(path, 'wb') as f:
         pickle.dump(variable, f)
 
-def print_status(player1, player2, stats, avg_reward, num_update):
-    print(f'{player1.name}: {stats[0]}, {player2.name}: {stats[1]}, ties : {stats[2]} , {avg_reward=:.2f}, {num_update =}, epsilon = {player1.epsilon:.5f}')
+def print_status(player1, player2, stats, avg_reward, num_update, loss):
+    print(f'{player1.name}: {stats[0]}, {player2.name}: {stats[1]}, ties : {stats[2]} , {avg_reward=:.2f}, {num_update=}, epsilon = {player1.epsilon:.5f}, {loss=}')
         
 if __name__ == "__main__": # Default "main method" idiom.
     main()

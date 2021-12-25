@@ -29,39 +29,48 @@ def plot_results(values, title, ylabel, legend):
     plt.show()
 
 def main():
-    # '11-12-22:15' alpha
-    # '11-13-23:52' alpha + epsilon-decay
-    # '11-13-01:59' no decay
-    # '11-11-15:28' original
-    # '11-21-16:00' random -3789 81980
-    #                       0.2929 0.0002038
-    filecode =  ['11-12-22:15', '11-13-23:52', '11-13-01:59', '11-11-15:28']
-    legend   =  ['alpha',       'alpha-decay', 'no-decay'   , 'original', 'random']
-    board_pkl = [f'{code}/{code}_small_board_Q.pkl' for code in filecode]
-    reward_pkl = [f'{code}/{code}_small_board_avg_reward.pkl' for code in filecode]
-    stats_pkl = [f'{code}/{code}_small_board_stats.pkl' for code in filecode]
+    filecode =  ['12-12-19:49', '12-13-17:40', '12-13-23:01', '12-13-23:04', '12-15-15:44']
+    legend   =  ['DQN origin', 'FCN', 'smallnet', 'large_decay', 'q-learning']
+#    filecode =  ['12-12-19:49', '12-13-17:40', '12-13-23:01', '12-13-23:04']
+#    legend   =  ['DQN origin',  'FCN', 'smallnet', 'large_decay']
+    reward_pkl = [f'{code}/{code}_avg_reward.pkl' for code in filecode]
+    stats_pkl = [f'{code}/{code}_stats.pkl' for code in filecode]
+    loss_pkl = [f'{code}/{code}_loss.pkl' for code in filecode[:-1]]
 
     reward = load_pickle(reward_pkl, False)
-    reward = np.array([value[:50000] for value in reward])
-    reward[0] = gaussian_filter1d(reward[0], 50)
-    reward[1] = gaussian_filter1d(reward[1], 80)
-    reward[2] = gaussian_filter1d(reward[2], 80)
-    reward[3] = gaussian_filter1d(reward[3], 130)
-    reward = np.vstack([reward, gaussian_filter1d(np.random.normal(-3789, 81980**.5, (50000,)), 15)])
+    reward = [np.array(value[:600]) for value in reward]
+    a = np.array(reward)
+    a[0] = gaussian_filter1d(a[0], 2)
+    a[1] = gaussian_filter1d(a[1], 2)
+    a[2] = gaussian_filter1d(a[2], 2)
+    a[3] = gaussian_filter1d(a[3], 2)
+    a[4] = gaussian_filter1d(a[4], 2)
 
-    reward = reward.transpose()
+    reward = a.transpose()
     plot_results(reward, 'average reward per 1000 games', 'reward', legend)
     
     stats = load_pickle(stats_pkl, False)
-    stats = np.array([value[:50000] for value in stats])
-    winrate = np.array([[sample[0]/sum(sample) for sample in stat] for stat in stats])
-    winrate[0] = gaussian_filter1d(winrate[0], 80)
-    winrate[1] = gaussian_filter1d(winrate[1], 80)
-    winrate[2] = gaussian_filter1d(winrate[2], 80)
-    winrate[3] = gaussian_filter1d(winrate[3], 130)
-    winrate = np.vstack([winrate, gaussian_filter1d(np.random.normal(.2929, .0002038**.5, (50000,)), 15)])
-    winrate = winrate.transpose()
+    winrate = np.array([np.array([sample[0]/sum(sample) for sample in stat[:600]]) for stat in stats])
+    a = np.array(winrate)
+    a[0] = gaussian_filter1d(a[0], 4)
+    a[1] = gaussian_filter1d(a[1], 4)
+    a[2] = gaussian_filter1d(a[2], 4)
+    a[3] = gaussian_filter1d(a[3], 4)
+    a[4] = gaussian_filter1d(a[4], 4)
+
+    winrate = a.transpose()
     plot_results(winrate, 'winrate per 1000 games', 'winrate', legend)
+
+    loss = load_pickle(loss_pkl, False)
+    loss = [np.array(value[:600]) for value in loss]
+    a = np.array(loss)
+    a[0] = gaussian_filter1d(a[0], 1)
+    a[1] = gaussian_filter1d(a[1], 1)
+    a[2] = gaussian_filter1d(a[2], 1)
+    a[3] = gaussian_filter1d(a[3], 1)
+
+    loss = a.transpose()
+    plot_results(loss, 'Huber loss per update', 'loss', legend)
 
 if __name__ == '__main__':
     main()
