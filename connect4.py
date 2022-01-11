@@ -6,10 +6,6 @@ import numpy as np
 import logging
 from board import *
 
-WIDTH = cfg.WIDTH
-HEIGHT = cfg.HEIGHT
-STREAK = cfg.STREAK
-
 class Game(object):
     """ Game object that holds state of Connect n board and game values
     """
@@ -23,7 +19,7 @@ class Game(object):
     game_name = u"Connecter Quatre\u2122" # U+2122 is "tm" this is a joke
     colors = [-1, 1]
     
-    def __init__(self, width = WIDTH, height = HEIGHT, streak = STREAK, verbose=True):
+    def __init__(self, width = cfg.WIDTH, height = cfg.HEIGHT, streak = cfg.STREAK, verbose=True):
         self.round = 1
         self.finished = False
         self.winner = None

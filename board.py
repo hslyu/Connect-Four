@@ -1,14 +1,12 @@
 import numpy as np                
 import copy
 import cfg
-HEIGHT = cfg.HEIGHT
-WIDTH = cfg.WIDTH
 
 def check_streak(state, color, streak):
     count = 0
     # for each piece in the board...
-    for i in range(HEIGHT):
-        for j in range(WIDTH):
+    for i in range(cfg.HEIGHT):
+        for j in range(cfg.WIDTH):
             # ...that is of the color we're looking for...
             if state[i][j] == color:
                 # check if a vertical streak starts at (i, j)
@@ -27,7 +25,7 @@ def check_streak(state, color, streak):
 
 def check_up(board, row, col, streak):
     consecutive = 0
-    for i in range(row, HEIGHT):
+    for i in range(row, cfg.HEIGHT):
         if board[i][col] == board[row][col]:
             consecutive += 1
         else:
@@ -41,7 +39,7 @@ def check_up(board, row, col, streak):
 def check_right(board, row, col, streak):
     
     consecutive = 0
-    for j in range(col, WIDTH):
+    for j in range(col, cfg.WIDTH):
         if board[row][j] == board[row][col]:
             consecutive += 1
         else:
@@ -57,7 +55,7 @@ def check_diagonal_up(board, row, col, streak):
     # check for diagonals with positive slope
     consecutive = 0
     for i in range(streak):
-        if row + i > HEIGHT-1 or col + i > WIDTH-1:
+        if row + i > cfg.HEIGHT-1 or col + i > cfg.WIDTH-1:
             break
         elif board[row+i][col+i] == board[row][col]:
             consecutive += 1
@@ -73,7 +71,7 @@ def check_diagonal_down(board, row, col, streak):
     # check for diagonals with negative slope
     consecutive = 0
     for i in range(streak):
-        if row - i < 0 or col + i > WIDTH-1:
+        if row - i < 0 or col + i > cfg.WIDTH-1:
             break
         elif board[row-i][col+i] == board[row][col]:
             consecutive += 1
@@ -93,7 +91,7 @@ def calc_next_board(state, column, color):
         Returns a copy of new state array with the added move
     """
     next_board = copy.deepcopy(state)
-    for i in range(HEIGHT):
+    for i in range(cfg.HEIGHT):
         if next_board[i][column] == 0:
             next_board[i][column] = color
             break

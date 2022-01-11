@@ -11,13 +11,11 @@ import random
 import cfg
 from board import *
 
-STREAK = cfg.STREAK
-
 class Minimax(object):
     """ Minimax object that takes a current connect four board state
     """
     
-    def __init__(self, color, num_streak=STREAK):
+    def __init__(self, color, num_streak=cfg.STREAK):
         # copy the board to self.board
         #self.board = [x[:] for x in board]
         self.color = color

@@ -16,10 +16,6 @@ import torch.nn.functional as F
 import torchvision.transforms as T
 import network
 
-WIDTH = cfg.WIDTH
-HEIGHT = cfg.HEIGHT
-STREAK = cfg.STREAK
-
 def print_board(board):
     for row in board:
         print(row)
@@ -38,11 +34,11 @@ class HumanPlayer(Player):
     type = None # possible types are "Human" and "AI"
     name = None
     color = None
-    def __init__(self, name, color, board_width = WIDTH):
+    def __init__(self, name, color, board_width = cfg.WIDTH):
         self.type = "Human"
         self.name = name
         self.color = color
-        self.board_width = WIDTH
+        self.board_width = cfg.WIDTH
     
     def move(self, board):
         #print("{0}'s turn.  {0} is {1}".format(self.name, self.color))
@@ -59,7 +55,7 @@ class HumanPlayer(Player):
         return column
 
 class DQNPlayer(Player):
-    def __init__(self, name, color, streak=STREAK,
+    def __init__(self, name, color, streak=cfg.STREAK,
                 epsilon=1, epsilon_min=0, epsilon_decay=1, 
                 batch_size=5e3, gamma = 0.95, lr=0.003):
         self.name = name
@@ -82,8 +78,8 @@ class DQNPlayer(Player):
 
         # Network
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.policy_net = network.DQN(HEIGHT, WIDTH, WIDTH).to(self.device)
-        self.target_net = network.DQN(HEIGHT, WIDTH, WIDTH).to(self.device)
+        self.policy_net = network.DQN(cfg.HEIGHT, cfg.WIDTH, cfg.WIDTH).to(self.device)
+        self.target_net = network.DQN(cfg.HEIGHT, cfg.WIDTH, cfg.WIDTH).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 #        self.optimizer = optim.RMSprop(self.policy_net.parameters(), lr)
@@ -219,7 +215,7 @@ class QPlayer(Player):
     Q = None # Q function dictionary. Q = {}, 
              # Q[board] = np.array with size self.available_actions(board)
     def __init__(self, name, color, discount_factor = 0.99,
-                 streak = STREAK, height = HEIGHT, width = WIDTH, 
+                 streak = cfg.STREAK, height = cfg.HEIGHT, width = cfg.WIDTH, 
                  epsilon = 1, epsilon_min = 0.03, epsilon_decay=0.999, batch_size=5e3):
         self.type = "QPlayer"
         self.name = name
@@ -430,9 +426,9 @@ def main():
 #    player = DQNPlayer('',1, epsilon=0)
     player = QPlayer('',1, epsilon=0)
     board = []
-    for i in range(HEIGHT):
+    for i in range(cfg.HEIGHT):
         board.append([])
-        for j in range(WIDTH):
+        for j in range(cfg.WIDTH):
             board[i].append(random.randint(0,1))
 
     while len(available_moves(board)) > 0:
